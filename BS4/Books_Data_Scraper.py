@@ -2,12 +2,12 @@ from bs4 import BeautifulSoup
 import requests
 import csv
 
-def Save_Row_To_CSV(list_of_values):
-    with open('books.csv', 'a') as csv_file:
+def Save_Row_To_CSV(list_of_values, mode, name_of_file):
+    with open(name_of_file, mode) as csv_file:
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow(list_of_values)
 
-Save_Row_To_CSV(['Title', 'Price in Pounds', 'Availability Status', 'Available Books', 'Rating'])
+Save_Row_To_CSV(['Title', 'Price in Pounds', 'Availability Status', 'Available Books', 'Rating'], 'w', 'books.csv')
 
 base_url = 'https://books.toscrape.com/'
 
@@ -43,7 +43,7 @@ for product in products:
 
     # Returns rating in the form "One", "Two"
     # The format of the class name is "book-rating One" and so on
-    # BS4 is interpreting "book-rating One" as two separate and returning a list of two elements
+    # BS4 is interpreting "book-rating One" as two separate classes and returning a list of two elements
     # We need to use find_all becuase this class name varies between books having different ratings
     book_rating_string = product_details.find_all('p')[2]['class'][1]
 
@@ -57,4 +57,4 @@ for product in products:
 
     book_rating_int = string_to_int.get(book_rating_string, None)
 
-    Save_Row_To_CSV([book_title, book_price_in_pounds, book_availability_status, number_of_available_books, book_rating_int])
+    Save_Row_To_CSV([book_title, book_price_in_pounds, book_availability_status, number_of_available_books, book_rating_int], 'a', 'books.csv')
