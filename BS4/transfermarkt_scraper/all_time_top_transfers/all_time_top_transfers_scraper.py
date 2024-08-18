@@ -1,10 +1,11 @@
 import time
 import requests
 import pandas as pd
+import concurrent.futures
 from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor
 
-# TODO: Implement async requests,
-# scrape images for all players
+# TODO: Scrape images for all players
 
 BASE_URL = 'https://www.transfermarkt.co.uk'
 URLS = [
@@ -20,7 +21,6 @@ HEADERS = {
 # Creating a session for use with every get request
 s = requests.Session()
 s.headers = HEADERS
-s.get(URLS[0])
 
 def main():
     start_time = time.time()
@@ -52,10 +52,14 @@ def get_all_pages_soups(urls: list[str]) -> list[BeautifulSoup]:
     Returns a list of BeautifulSoup objects after sending get
     requests to each URL in the passed list
     '''
-    soups = []
-    for url in urls:
-        soup = get_page_soup(url)
-        soups.append(soup)
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        future_results = {
+            executor.submit(get_page_soup, url): url for url in urls
+        }
+        soups = []
+        for future in concurrent.futures.as_completed(future_results):
+            soups.append(future.result())
+
     return soups
 
 def get_page_soup(url: str) -> BeautifulSoup:
