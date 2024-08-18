@@ -3,13 +3,24 @@ import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 
-# Synchronous implementation time: 19-34s
+# TODO: Implement async requests,
+# scrape images for all players
 
 BASE_URL = 'https://www.transfermarkt.co.uk'
 URLS = [
     BASE_URL + '/transfers/transferrekorde/statistik?saison_id=alle&land_id=0&ausrichtung=&spielerposition_id=&altersklasse=&leihe=&w_s=&plus=1&page=' + str(page_number)
     for page_number in range(1, 10 + 1)
 ]
+HEADERS = {
+        'Host': 'www.transfermarkt.co.uk',
+        'User-Agent': 'WebSniffer/1.2 (+http://websniffer.com/)',
+        'Accept': '*/*',
+        'Referer': 'https://websniffer.com/'
+}
+# Creating a session for use with every get request
+s = requests.Session()
+s.headers = HEADERS
+s.get(URLS[0])
 
 def main():
     start_time = time.time()
@@ -27,6 +38,15 @@ def main():
 
     print(f'--- Time to execute : {time.time() - start_time}s ---')
 
+def send_get_request(url: str) -> requests.Response:
+    response = s.get(url)
+    if response.status_code == 200:
+        print(f'Fetched {url}')
+        return response
+    else:
+        print(f'Failed to fetch {url}')
+        print(f'Status Code: {response.status_code}')
+
 def get_all_pages_soups(urls: list[str]) -> list[BeautifulSoup]:
     '''
     Returns a list of BeautifulSoup objects after sending get
@@ -43,20 +63,10 @@ def get_page_soup(url: str) -> BeautifulSoup:
     Returns a BeautifulSoup object after sending a get request
     to the specified URL
     '''
-    headers = {
-        'Host': 'www.transfermarkt.co.uk',
-        'User-Agent': 'WebSniffer/1.2 (+http://websniffer.com/)',
-        'Accept': '*/*',
-        'Referer': 'https://websniffer.com/'
-    }
-    response = requests.get(url, headers=headers)
+    response = send_get_request(url)
     if response.status_code == 200:
         soup = BeautifulSoup(response.content, 'html.parser')
-        print(f'Fetched {url}')
         return soup
-    else:
-        print(f'Failed to fetch {url}')
-        print(f'Status Code: {response.status_code}')
 
 def get_transfer_data(soup: BeautifulSoup) -> list[dict]:
     '''
