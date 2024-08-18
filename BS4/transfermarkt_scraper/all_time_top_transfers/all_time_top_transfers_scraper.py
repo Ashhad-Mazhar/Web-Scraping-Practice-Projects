@@ -3,9 +3,7 @@ import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 
-# TODO: Fix faulty parsing code in parse_row() function.
-
-# Synchronous implementation time: 24.74s
+# Synchronous implementation time: 19-34s
 
 BASE_URL = 'https://www.transfermarkt.co.uk'
 URLS = [
@@ -22,7 +20,7 @@ def main():
         transfer_data = get_transfer_data(soup)
         for record in transfer_data:
             transfer_records.append(record)
-    if store_in_csv(transfer_records):
+    if store_in_csv(transfer_records, 'players.csv'):
         print('Data has been written to csv')
     else:
         print('There was an error while writing data to csv')
@@ -74,7 +72,11 @@ def get_transfer_data(soup: BeautifulSoup) -> list[dict]:
     return player_records
 
 def parse_row(row: BeautifulSoup) -> dict:
-    cells = row.find_all('td')
+    '''
+    Returns a complete record of the transfer after parsing
+    the passed BeautifulSoup object of a single table row.
+    '''
+    cells = row.find_all('td', recursive=False)
     name_position_image = cells[1]
     age = cells[2]
     market_value = cells[3]
@@ -89,7 +91,6 @@ def parse_row(row: BeautifulSoup) -> dict:
         transfer_data['player_name'] = (
             name_position_image.find('a').get_text().strip()
         )
-        print('Retrieved retrieve player name')
     except:
         transfer_data['player_name'] = 'MISSING VALUE'
         print('Could not retrieve player name')
@@ -97,15 +98,13 @@ def parse_row(row: BeautifulSoup) -> dict:
         transfer_data['player_page_url'] = (
             BASE_URL + name_position_image.find('a')['href']
         )
-        print('Retrieved player page URL')
     except:
         transfer_data['player_page_url'] = 'MISSING VALUE'
         print('Could not retrieve player page URL')
     try:
         transfer_data['player_image_url'] = (
-            name_position_image.find('img')['src']
+            name_position_image.find('img')['data-src']
         )
-        print('Retrieved player image URL')
     except:
         transfer_data['player_image_url'] = 'MISSING VALUE'
         print('Could not retrieve player image URL')
@@ -113,29 +112,21 @@ def parse_row(row: BeautifulSoup) -> dict:
         transfer_data['player_position'] = (
             name_position_image.find_all('tr')[1].get_text().strip()
         )
-        print('Retrieved player position')
     except:
         transfer_data['player_position'] = 'MISSING VALUE'
         print('Could not retrieve player position')
     try:
         transfer_data['player_age'] = age.get_text().strip()
-        print('Retrieved player age')
     except:
         transfer_data['player_age'] = 'MISSING VALUE'
         print('Could not retrieve player age')
     try:
-        player_value = market_value.get_text().strip()
-        # Transforming values like "€100.23m" into "100230000"
-        transfer_data['player_value_in_euros'] = (
-            player_value.replace('€', '').replace('.', '').replace('m', '0000')
-        )
-        print('Retrieved player value')
+        transfer_data['player_value_in_euros'] = market_value.get_text().strip()
     except:
         transfer_data['player_value_in_euros'] = 'MISSING VALUE'
         print('Could not retrieve player value')
     try:
         transfer_data['season'] = season.find('a').get_text().strip()
-        print('Retrieved season')
     except:
         transfer_data['season'] = 'MISSING VALUE'
         print('Could not retrieve season')
@@ -144,54 +135,67 @@ def parse_row(row: BeautifulSoup) -> dict:
             country['title'] for country in nationality.find_all('img')
         ]
         transfer_data['player_nationalities'] = nationalities
-        print('Retrieved player nationalities')
     except:
         transfer_data['player_nationalities'] = 'MISSING VALUE'
         print('Could not retrieve player nationalities')
     try:
         old_club_info = old_club.find_all('tr')
         transfer_data['old_club_name'] = old_club_info[0].find('a')['title']
-        print('Retrieved old club info')
     except:
         transfer_data['old_club_name'] = 'MISSING VALUE'
         print('Could not retrieve old club info')
     try:
         transfer_data['old_league_name'] = old_club_info[1].find('a')['title']
-        print('Retrieved old club info')
     except:
         transfer_data['old_league_name'] = 'MISSING VALUE'
         print('Could not retrieve old club info')
     try:
         new_club_info = new_club.find_all('tr')
         transfer_data['new_club_name'] = new_club_info[0].find('a')['title']
-        print('Retrieved new club info')
     except:
         transfer_data['new_club_name'] = 'MISSING VALUE'
         print('Could not retrieve new club info')
     try:
-        transfer_data['new_club_name'] = new_club_info[1].find('a')['title']
-        print('Retrieved new club info')
+        transfer_data['new_league_name'] = new_club_info[1].find('a')['title']
     except:
         transfer_data['new_league_name'] = 'MISSING VALUE'
         print('Could not retrieve new club info')
     try:
-        transfer_fee_value = transfer_fee.find('a').get_text().strip()
-        # Transforming values like "€100.23m" into "100230000"
-        transfer_data['transfer_fee_in_euros'] = (
-            transfer_fee_value.replace('€', '').replace('.', '').replace('m', '0000')
-        )
-        print('Retrieved transfer fee')
+        transfer_data['transfer_fee_in_euros'] = transfer_fee.find('a').get_text().strip()
     except:
         transfer_data['transfer_fee_in_euros'] = 'MISSING VALUE'
         print('Could not retrieve transfer fee')
     return transfer_data
     
-def store_in_csv(records: list[dict]) -> bool:
+def store_in_csv(records: list[dict], filepath: str) -> bool:
+    '''
+    Applies some transformations to the given list of records, sorts
+    it according to the transfer fee and then stores it in a csv file
+    '''
     try:
         df = pd.DataFrame.from_dict(records)
+
+        # Transforming values like "€100.23m" into "100230000"
+        df['player_value_in_euros'] = (df['player_value_in_euros']
+                .str.replace('€', '')
+                .str.replace('.', '')
+                .str.replace('m', '0000')
+        )
+        df['transfer_fee_in_euros'] = (df['transfer_fee_in_euros']
+                .str.replace('€', '')
+                .str.replace('.', '')
+                .str.replace('m', '0000')
+        )
+        # Converting transfer fees to numeric so sorting
+        # is done correctly
+        df['transfer_fee_in_euros'] = pd.to_numeric(
+            df['transfer_fee_in_euros'], errors='coerce'
+        )
+        df.sort_values('transfer_fee_in_euros', ascending=False, inplace=True)
         df.index = range(1, len(df) + 1)
         df.index.name = 'transfer_id'
-        df.to_csv('players.csv', index=True)
+
+        df.to_csv(filepath, index=True)
         return True
     except:
         return False
