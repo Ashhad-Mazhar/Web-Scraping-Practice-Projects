@@ -1,13 +1,16 @@
 BASE_URL = 'https://www.transfermarkt.co.uk'
+
 # Query parameters
 # 'alle' means (to the server) that we need all seasons' data
 SEASON_ID = 'alle'
-NUMBER_OF_PAGES = 10
-# List of URLS to scrape
-URLS = [
-    BASE_URL + f'/transfers/transferrekorde/statistik?saison_id={SEASON_ID}&land_id=0&ausrichtung=&spielerposition_id=&altersklasse=&leihe=&w_s=&plus=1&page={str(page_number)}'
-    for page_number in range(1, NUMBER_OF_PAGES + 1)
-]
+
+# The URL for the page excluding the page number parameter that
+# will be dynamically filled in by the scraper module
+TRANSFER_PAGE_URL = BASE_URL + f'/transfers/transferrekorde/statistik?saison_id={SEASON_ID}&land_id=0&ausrichtung=&spielerposition_id=&altersklasse=&leihe=&w_s=&plus=1&page='
+
+# The maximum number of pages that will be scraped from a season
+MAXIMUM_PAGES = 10
+
 HEADERS_LIST = [
 			{
 				"name": "Accept",

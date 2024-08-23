@@ -1,9 +1,8 @@
+import httpx
 import utils
-import requests
-import concurrent.futures
-from config import URLS, HEADERS
+import asyncio
 from parser import TransferParser
-from concurrent.futures import ThreadPoolExecutor
+from config import HEADERS, TRANSFER_PAGE_URL, MAXIMUM_PAGES
 
 class TransferScraper:
     '''
@@ -14,37 +13,36 @@ class TransferScraper:
         Creates a session to be used throughout the program and
         includes the headers from the config file
         '''
-        self.session = requests.session()
-        self.session.headers.update(HEADERS)
+        self.client = httpx.AsyncClient(headers=HEADERS, timeout=None)
     
-    def scrape(self) -> list[dict]:
+    async def scrape(self) -> list[dict]:
         '''
         Returns a list of records obtained after parsing all
         URLs
         '''
         parser = TransferParser()
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            future_results = {
-                executor.submit(self.fetch_url, url): url for url in URLS
-            }
-            all_htmls = []
-            for future in concurrent.futures.as_completed(future_results):
-                all_htmls.append(future.result())
-            all_data = []
-            for html in all_htmls:
-                if html:
-                    page_data = parser.parse(html)
-                    all_data.extend(page_data)
-            self.download_images(all_data)
+        all_data = []
+        previous_html = None
+        for page_number in range(1, MAXIMUM_PAGES + 1):
+            url = TRANSFER_PAGE_URL + str(page_number)
+            current_html = await self.fetch_url(url)
+
+            if previous_html is not None and current_html == previous_html:
+                print(f'All pages scraped.')
+            
+            all_data.extend(parser.parse(current_html))
+            
+            previous_html = current_html
+        await self.download_images(all_data)
         return all_data
     
-    def fetch_url(self, url: str) -> requests.Response.content:
+    async def fetch_url(self, url: str) -> httpx.Response.content:
         '''
         Sends a GET request to the specified URL and returns the
         body of the response in case the request is successful
         and returns None otherwise
         '''
-        response = self.session.get(url)
+        response = await self.client.get(url)
         if response.status_code == 200:
             print(f'Fetched {url}')
             return response.content
@@ -53,23 +51,19 @@ class TransferScraper:
             print(f'Status Code: {response.status_code}')
             return None
         
-    def download_images(self, records: list[dict]) -> None:
+    async def download_images(self, records: list[dict]) -> None:
         '''
         Scrapes the images for each player in the provided list of
         records and then appends them in-place to each of the dictionary
         '''
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            future_results = {
-                executor.submit(
-                    self.fetch_url, record['player_image_url']): record
-                    for record in records
+        async def download_image(record: dict) -> None:
+            record['player_image'] = {
+                'data': await self.fetch_url(record['player_image_url']),
+                'filename': utils.get_image_filename(
+                    record['player_image_url'], record['player_name']
+                )
             }
-            for future in concurrent.futures.as_completed(future_results):
-                image_data = future.result()
-                record = future_results[future]
-                record['player_image'] = {
-                    'data': image_data,
-                    'filename': utils.get_image_filename(
-                        record['player_image_url'], record['player_name']
-                    )
-                }
+            await asyncio.sleep(0.5)
+        
+        tasks = [download_image(record) for record in records]
+        await asyncio.gather(*tasks)

@@ -1,15 +1,13 @@
 import time
+import asyncio
 from storage import DataStorage
 from scraper import TransferScraper
 
-# Dividing the code into separate modules somehow led to execution
-# time being reduced from 80s to 24s while testing side by side (Why?)
-
-def main():
+async def main():
     start_time = time.time()
 
     scraper = TransferScraper()
-    records = scraper.scrape()
+    records = await scraper.scrape()
     storage = DataStorage()
     storage.save(records)
 
@@ -17,4 +15,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
