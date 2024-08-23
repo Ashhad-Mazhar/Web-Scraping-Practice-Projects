@@ -4,6 +4,9 @@ import asyncio
 from parser import TransferParser
 from config import HEADERS, TRANSFER_PAGE_URL, MAXIMUM_PAGES
 
+# TODO: Figure out a way to stop fetching pages once the last
+# page of the season has been fetched
+
 class TransferScraper:
     '''
     Meant to handle communication with the server

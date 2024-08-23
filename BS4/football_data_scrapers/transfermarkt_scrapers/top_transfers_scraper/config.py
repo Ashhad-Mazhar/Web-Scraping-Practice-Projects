@@ -1,15 +1,25 @@
+import os
+
 BASE_URL = 'https://www.transfermarkt.co.uk'
 
 # Query parameters
 # 'alle' means (to the server) that we need all seasons' data
-SEASON_ID = 'alle'
+SEASON_ID = '1978'
 
 # The URL for the page excluding the page number parameter that
 # will be dynamically filled in by the scraper module
-TRANSFER_PAGE_URL = BASE_URL + f'/transfers/transferrekorde/statistik?saison_id={SEASON_ID}&land_id=0&ausrichtung=&spielerposition_id=&altersklasse=&leihe=&w_s=&plus=1&page='
+TRANSFER_PAGE_URL = BASE_URL + f'/transfers/transferrekorde/statistik/top/ajax/yw2/saison_id/{SEASON_ID}/land_id//ausrichtung//spielerposition_id//altersklasse//jahrgang/0/leihe//w_s//plus/1/galerie/0/page/'
 
 # The maximum number of pages that will be scraped from a season
 MAXIMUM_PAGES = 10
+
+# The paths where the scraped files will be stored
+if SEASON_ID == 'alle':
+	CSV_FILE_PATH = os.path.join('All_Seasons', f'players.csv')
+	IMAGES_PATH = os.path.join('All_Seasons', f'player_images')
+else:
+	CSV_FILE_PATH = os.path.join(SEASON_ID, 'players.csv')
+	IMAGES_PATH = os.path.join(SEASON_ID, 'player_images')
 
 HEADERS_LIST = [
 			{
@@ -31,6 +41,3 @@ HEADERS_LIST = [
 ]
 # Converting headers copied from the browser to a single dictionary
 HEADERS = { header['name']: header['value'] for header in HEADERS_LIST }
-
-CSV_FILENAME = 'players.csv'
-IMAGES_PATH = 'player_images'

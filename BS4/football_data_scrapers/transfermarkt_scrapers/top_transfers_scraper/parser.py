@@ -1,6 +1,9 @@
 from config import BASE_URL
 from bs4 import BeautifulSoup
 
+# TODO: Implement alternative logic for some records that have
+# slightly different parsing logic for league names
+
 class TransferParser:
     def parse(self, html: str) -> list[dict]:
         '''
