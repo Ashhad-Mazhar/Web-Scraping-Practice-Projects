@@ -2,10 +2,7 @@ import httpx
 import utils
 import asyncio
 from parser import TransferParser
-from config import HEADERS, TRANSFER_PAGE_URL, MAXIMUM_PAGES
-
-# TODO: Figure out a way to stop fetching pages once the last
-# page of the season has been fetched
+from config import HEADERS, TRANSFER_PAGE_URL
 
 class TransferScraper:
     '''
@@ -25,17 +22,19 @@ class TransferScraper:
         '''
         parser = TransferParser()
         all_data = []
-        previous_html = None
-        for page_number in range(1, MAXIMUM_PAGES + 1):
-            url = TRANSFER_PAGE_URL + str(page_number)
-            current_html = await self.fetch_url(url)
-
-            if previous_html is not None and current_html == previous_html:
-                print(f'All pages scraped.')
-            
-            all_data.extend(parser.parse(current_html))
-            
-            previous_html = current_html
+        # Fetch the HTML for the first URL and determine from the
+        # pagination list how many pages need to be scraped
+        first_page_html = await self.fetch_url(TRANSFER_PAGE_URL + str(1))
+        urls = parser.get_urls_from_pagination(first_page_html)
+        if urls is None:
+            urls = [
+                TRANSFER_PAGE_URL + str(page)
+                for page in range(1, 10 + 1)
+            ]
+        tasks = [self.fetch_url(url) for url in urls]
+        all_htmls = await asyncio.gather(*tasks)
+        for html in all_htmls:
+            all_data.extend(parser.parse(html))
         await self.download_images(all_data)
         return all_data
     

@@ -1,8 +1,5 @@
-from config import BASE_URL
 from bs4 import BeautifulSoup
-
-# TODO: Implement alternative logic for some records that have
-# slightly different parsing logic for league names
+from config import BASE_URL, TRANSFER_PAGE_URL
 
 class TransferParser:
     def parse(self, html: str) -> list[dict]:
@@ -19,22 +16,6 @@ class TransferParser:
             all_data.append(player_data)
         return all_data
     
-    def safe_extract(
-            self,
-            function: callable,
-            error_message: str,
-            default_value:str='MISSING VALUE'
-    ) -> str:
-        '''
-        Executes the given function and returns its result. In
-        case of an expection, returns the default value and prints
-        an error message to the terminal
-        '''
-        try:
-            return function()
-        except Exception as e:
-            print(error_message)
-            return default_value
 
     def parse_row(self, row: BeautifulSoup) -> dict:
         '''
@@ -113,3 +94,47 @@ class TransferParser:
             'Could not retrieve transfer fee'
         )
         return transfer_data
+    
+    def safe_extract(
+            self,
+            function: callable,
+            error_message: str,
+            default_value:str='MISSING VALUE'
+    ) -> str:
+        '''
+        Executes the given function and returns its result. In
+        case of an expection, returns the default value and prints
+        an error message to the terminal
+        '''
+        try:
+            return function()
+        except Exception as e:
+            print(error_message)
+            return default_value
+     
+    def get_urls_from_pagination(self, html: str) -> list[str]:
+        '''
+        Takes a page's HTML file, determines how many total pages
+        need to be scraped from the pagination list and returns a
+        list of URLs of the pages
+        '''
+        soup = BeautifulSoup(html, 'html.parser')
+        try:
+            list_of_pages = [
+                li for li in soup.find_all(
+                    'li', {'class': 'tm-pagination__list-item'})
+                    if li.get('class') == ['tm-pagination__list-item']
+            ]
+            page_number = int(
+                list_of_pages[-1].find(
+                    'a', {'class': 'tm-pagination__link'}
+                    ).get_text().strip()
+            )
+            urls = [
+                TRANSFER_PAGE_URL + str(page)
+                for page in range(1, page_number + 1)
+            ]
+            return urls
+        except:
+            print(f'There was an error while determining number of pages')
+            return None

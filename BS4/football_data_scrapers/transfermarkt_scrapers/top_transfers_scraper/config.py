@@ -4,14 +4,11 @@ BASE_URL = 'https://www.transfermarkt.co.uk'
 
 # Query parameters
 # 'alle' means (to the server) that we need all seasons' data
-SEASON_ID = '1978'
+SEASON_ID = 'alle'
 
 # The URL for the page excluding the page number parameter that
 # will be dynamically filled in by the scraper module
 TRANSFER_PAGE_URL = BASE_URL + f'/transfers/transferrekorde/statistik/top/ajax/yw2/saison_id/{SEASON_ID}/land_id//ausrichtung//spielerposition_id//altersklasse//jahrgang/0/leihe//w_s//plus/1/galerie/0/page/'
-
-# The maximum number of pages that will be scraped from a season
-MAXIMUM_PAGES = 10
 
 # The paths where the scraped files will be stored
 if SEASON_ID == 'alle':
